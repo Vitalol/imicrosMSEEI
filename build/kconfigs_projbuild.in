@@ -1,0 +1,5 @@
+source "C:/espressif/esp-idf/components/app_update/Kconfig.projbuild"
+source "C:/espressif/esp-idf/components/bootloader/Kconfig.projbuild"
+source "C:/espressif/esp-idf/components/esptool_py/Kconfig.projbuild"
+source "C:/espressif/esp-idf/components/partition_table/Kconfig.projbuild"
+source "C:/MSEEI/IMicros/ESP32/Proyecto-MQTT/main/Kconfig.projbuild"

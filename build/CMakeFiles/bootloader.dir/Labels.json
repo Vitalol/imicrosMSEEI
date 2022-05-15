@@ -1,0 +1,43 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "C:/MSEEI/IMicros/ESP32/Proyecto-MQTT/build/CMakeFiles/bootloader"
+		},
+		{
+			"file" : "C:/MSEEI/IMicros/ESP32/Proyecto-MQTT/build/CMakeFiles/bootloader.rule"
+		},
+		{
+			"file" : "C:/MSEEI/IMicros/ESP32/Proyecto-MQTT/build/CMakeFiles/bootloader-complete.rule"
+		},
+		{
+			"file" : "C:/MSEEI/IMicros/ESP32/Proyecto-MQTT/build/bootloader-prefix/src/bootloader-stamp/bootloader-install.rule"
+		},
+		{
+			"file" : "C:/MSEEI/IMicros/ESP32/Proyecto-MQTT/build/bootloader-prefix/src/bootloader-stamp/bootloader-mkdir.rule"
+		},
+		{
+			"file" : "C:/MSEEI/IMicros/ESP32/Proyecto-MQTT/build/bootloader-prefix/src/bootloader-stamp/bootloader-download.rule"
+		},
+		{
+			"file" : "C:/MSEEI/IMicros/ESP32/Proyecto-MQTT/build/bootloader-prefix/src/bootloader-stamp/bootloader-update.rule"
+		},
+		{
+			"file" : "C:/MSEEI/IMicros/ESP32/Proyecto-MQTT/build/bootloader-prefix/src/bootloader-stamp/bootloader-patch.rule"
+		},
+		{
+			"file" : "C:/MSEEI/IMicros/ESP32/Proyecto-MQTT/build/bootloader-prefix/src/bootloader-stamp/bootloader-configure.rule"
+		},
+		{
+			"file" : "C:/MSEEI/IMicros/ESP32/Proyecto-MQTT/build/bootloader-prefix/src/bootloader-stamp/bootloader-build.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"bootloader"
+		],
+		"name" : "bootloader"
+	}
+}

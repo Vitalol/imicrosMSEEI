@@ -1,0 +1,13 @@
+# Target labels
+ bootloader
+# Source files and their labels
+C:/MSEEI/IMicros/ESP32/Proyecto-MQTT/build/CMakeFiles/bootloader
+C:/MSEEI/IMicros/ESP32/Proyecto-MQTT/build/CMakeFiles/bootloader.rule
+C:/MSEEI/IMicros/ESP32/Proyecto-MQTT/build/CMakeFiles/bootloader-complete.rule
+C:/MSEEI/IMicros/ESP32/Proyecto-MQTT/build/bootloader-prefix/src/bootloader-stamp/bootloader-install.rule
+C:/MSEEI/IMicros/ESP32/Proyecto-MQTT/build/bootloader-prefix/src/bootloader-stamp/bootloader-mkdir.rule
+C:/MSEEI/IMicros/ESP32/Proyecto-MQTT/build/bootloader-prefix/src/bootloader-stamp/bootloader-download.rule
+C:/MSEEI/IMicros/ESP32/Proyecto-MQTT/build/bootloader-prefix/src/bootloader-stamp/bootloader-update.rule
+C:/MSEEI/IMicros/ESP32/Proyecto-MQTT/build/bootloader-prefix/src/bootloader-stamp/bootloader-patch.rule
+C:/MSEEI/IMicros/ESP32/Proyecto-MQTT/build/bootloader-prefix/src/bootloader-stamp/bootloader-configure.rule
+C:/MSEEI/IMicros/ESP32/Proyecto-MQTT/build/bootloader-prefix/src/bootloader-stamp/bootloader-build.rule
