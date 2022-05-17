@@ -17,7 +17,7 @@ QueueHandle_t adcQueue;
 void vTimerADCCallback( TimerHandle_t pxTimer )
 {
 	uint16_t adcValue= (int16_t) adc1_get_raw(ADC_CHANNEL_6);
-	xQueueSend(adcQueue, &adcValue, 0); //No tiene sentido esperar en el envio de un lectura, si se solapa se prefiere la mas reciente
+	xQueueSend(adcQueue, &adcValue, 0);
 }
  void gpio_adcGetQueueHandle(QueueHandle_t *ptrQueue){
 	 *ptrQueue = adcQueue;
@@ -34,16 +34,18 @@ float gpio_adcRead(void)
 }
 
 void gpio_adcChangePeriod(float seconds){
+	xTimerStop(timerADC, portMAX_DELAY);
 	xTimerChangePeriod(timerADC,  seconds * configTICK_RATE_HZ, portMAX_DELAY);
+	xTimerStart(timerADC, portMAX_DELAY);
 }
 
 void gpio_adcInit(void){
-	//Inicializa el ADC... 12bits con rango de 3,6V (atenuación 11dB)
+	//Inicializa el ADC... 12bits con rango de 3,6V (atenuaciï¿½n 11dB)
 	adc1_config_width(ADC_WIDTH_BIT_12);
 	adc1_config_channel_atten(ADC_CHANNEL_6, ADC_ATTEN_DB_11); //GPIO34 if ADC1. Rango de 3,6 V
 	adcQueue = xQueueCreate(10, sizeof(uint16_t));
     timerADC = xTimerCreate("TmrADC", configTICK_RATE_HZ, pdTRUE, ( void * ) 1, vTimerADCCallback);
-    gpio_adcChangePeriod(10);
+    gpio_adcChangePeriod(5);
     xTimerStart(timerADC,portMAX_DELAY);
 	 if (timerADC==NULL){
 		 printf("No se pudo crear el timer ADC");

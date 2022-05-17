@@ -62,14 +62,19 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
             msg_id = esp_mqtt_client_subscribe(client, MQTT_TOPIC_SUBSCRIBE_BASE, 0);
             ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
 
+            // Crear tareas y colas utilizadas
             mqttSendQueue = xQueueCreate(  10, sizeof(struct mqttMessage *) ); // VMTO la cola va a contener punteros a las cadenas de textos que forman el msj mqtt
             xTaskCreate(mqtt_sender_task, "mqtt_sender", 4096, NULL, 5, &senderTaskHandler); //Crea la tarea MQTT sender
+
             xTaskCreate(mqtt_sensorSubscription, "mqtt_sensors", 4096, NULL, 0, &sensorsTaskHandler); // VMTO Crea la tarea para subscribirse a los sensores/gpios
 
+            // Enviar mensaje de conexion
+            int msg_id =esp_mqtt_client_publish(client, MQTT_TOPIC_LAST_WILL, "{\"connected\": true}", 0, 0, 1);
             break;
         case MQTT_EVENT_DISCONNECTED:
             ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
-            //Deberíamos destruir la tarea que envía....
+            vTaskDelete(mqtt_sender_task);
+            vTaskDelete(mqtt_sensorSubscription);
             break;
         case MQTT_EVENT_SUBSCRIBED:
             ESP_LOGI(TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
@@ -219,7 +224,7 @@ static void mqtt_sender_task(void *pvParameters)
 
 		// Esperar la cola de mensaje
 
-		int msg_id = esp_mqtt_client_publish(client, MQTT_TOPIC_PUBLISH_BASE, msj->buffer, 0, 0, 1); //al utilizar la biblioteca Frozen, buffer es una cadena correctamente terminada con el caracter 0.
+		int msg_id = esp_mqtt_client_publish(client, MQTT_TOPIC_PUBLISH_BASE, msj->buffer, 0, 0, 0); //al utilizar la biblioteca Frozen, buffer es una cadena correctamente terminada con el caracter 0.
 																								//así que puedo no indicar la longitud (cuarto parámetro vale 0).
 																								// Si fuese un puntero a datos binarios arbitrários, tendría que indicar la longitud de los datos en el cuarto parámetro de la función.
 		ESP_LOGI(TAG, "sent successful, msg_id=%d: %s", msg_id, msj->buffer);
@@ -236,7 +241,7 @@ esp_err_t mqtt_app_start(const char* url)
 		esp_mqtt_client_config_t mqtt_cfg = {
 				.uri = MQTT_BROKER_URL,
 				.lwt_topic = MQTT_TOPIC_LAST_WILL,
-				.lwt_msg = "{\"ping\": false}",
+				.lwt_msg = "{\"connected\": false}",
 				.lwt_retain = 1,
 				.keepalive = 20
 		};
@@ -282,7 +287,8 @@ static void mqtt_sensorSubscription(void *pvParameters){
 	xQueueAddToSet( ds1621Queuehandle, xQueueSet );
 
 	for(;;){
-		 xActivatedMember = xQueueSelectFromSet( xQueueSet, 15000 / portTICK_PERIOD_MS ); // ADC deberia enviar cada 10 segundos, si en 15 segundos no ha pasado nada algo está roto
+		 xActivatedMember = xQueueSelectFromSet( xQueueSet, 15000 / portTICK_PERIOD_MS ); // ADC deberia enviar cada 10 segundos,
+		 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	  //si en 15 segundos no ha pasado nada algo está roto
 
 		 mqttMessage * ptrAnswer = pvPortMalloc(sizeof(mqttMessage));
 		 struct json_out out1 = JSON_OUT_BUF(ptrAnswer->buffer, sizeof(ptrAnswer->buffer));
@@ -291,13 +297,10 @@ static void mqtt_sensorSubscription(void *pvParameters){
 	        {
 			 	uint16_t adcValue;
 	            xQueueReceive( xActivatedMember, &adcValue, 0 );
-	            // ESP_LOGI(TAG, "ADC Value %d", adcValue);  // Debug
 				// formar mensaje json
 				json_printf(&out1,"{ ADC : %d }", adcValue);
 				// Enviar mensaje a la cola
 				xQueueSend(mqttSendQueue, (void *) &(ptrAnswer), portMAX_DELAY);
-
-
 	        }
 	        else if( xActivatedMember == btnQueuehandle )
 	        {
