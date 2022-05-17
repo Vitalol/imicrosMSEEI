@@ -27,6 +27,13 @@ typedef struct mqttMessage{
 
 esp_err_t mqtt_app_start(const char* url);
 
+
+
+// Examen
+void mqtt_ds1621_GetQueueHandleAlarma(QueueHandle_t *ptrQueue);
+
+
+
 /** API para faciitar el envio de mensajes mqtt
  *  encola el mensaje para que la tarea de publicación los publique
  */

@@ -37,6 +37,10 @@ static TaskHandle_t senderTaskHandler=NULL;
 static TaskHandle_t sensorsTaskHandler=NULL;
 static QueueHandle_t mqttSendQueue = NULL; // Cola de mensajes hacia sender
 
+// EXAMEN
+static QueueHandle_t alarmQueue = NULL;
+
+
 
 //****************************************************************************
 // Funciones.
@@ -66,10 +70,14 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
             mqttSendQueue = xQueueCreate(  10, sizeof(struct mqttMessage *) ); // VMTO la cola va a contener punteros a las cadenas de textos que forman el msj mqtt
             xTaskCreate(mqtt_sender_task, "mqtt_sender", 4096, NULL, 5, &senderTaskHandler); //Crea la tarea MQTT sender
 
-            xTaskCreate(mqtt_sensorSubscription, "mqtt_sensors", 4096, NULL, 0, &sensorsTaskHandler); // VMTO Crea la tarea para subscribirse a los sensores/gpios
+            xTaskCreate(mqtt_sensorSubscription, "mqtt_sensors", 2*4096, NULL, 0, &sensorsTaskHandler); // VMTO Crea la tarea para subscribirse a los sensores/gpios
 
             // Enviar mensaje de conexion
             int msg_id =esp_mqtt_client_publish(client, MQTT_TOPIC_LAST_WILL, "{\"connected\": true}", 0, 0, 1);
+            alarmQueue = xQueueCreate(  1, sizeof(float) ); // VMTO la cola va a contener punteros a las cadenas de textos que forman el msj mqtt
+            ds162_getQueueHandleAlarm(&alarmQueue);
+            // EXAMEN
+
             break;
         case MQTT_EVENT_DISCONNECTED:
             ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
@@ -99,6 +107,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         	bool booleano;
         	uint8_t rgbLeds[3] = {0};
         	float tempPeriod;
+        	float tempUmbral; // EXAMEN
 
         	// RED LED
         	if(json_scanf(event->data, event->data_len, "{ redLed: %B }", &booleano)==1)
@@ -197,6 +206,15 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         		ds1621_TimerChangePeriod(tempPeriod);
         	}
 
+        	////////////////////////////////////////////////
+        	//					 EXAMEN
+        	////////////////////////////////////////////////
+
+        	if(json_scanf(event->data, event->data_len, "{ tempUmbral : %f }", &tempUmbral)==1)
+        	{
+        		ESP_LOGI(TAG, "tempUmbral: %f", tempUmbral);
+        		xQueueOverwrite(alarmQueue, &tempUmbral);
+        	}
 
         }
             break;
@@ -285,7 +303,14 @@ static void mqtt_sensorSubscription(void *pvParameters){
 	xQueueAddToSet( adcQueueHandle, xQueueSet );
 	xQueueAddToSet( btnQueuehandle, xQueueSet );
 	xQueueAddToSet( ds1621Queuehandle, xQueueSet );
-
+	// EXAMEN
+	float tempUmbral = 200; //Valor fuera de rango
+	float tempUmbralQueue;
+	xQueueAddToSet( alarmQueue, xQueueSet);
+	TickType_t tiempoActual = 0;
+	TickType_t tiempoPasado = 0; // tiempo del ultimo valor por encima del rango
+	bool alarmaActiva = false;
+	char buffAlarma[50];
 	for(;;){
 		 xActivatedMember = xQueueSelectFromSet( xQueueSet, 15000 / portTICK_PERIOD_MS ); // ADC deberia enviar cada 10 segundos,
 		 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	  //si en 15 segundos no ha pasado nada algo está roto
@@ -293,6 +318,14 @@ static void mqtt_sensorSubscription(void *pvParameters){
 		 mqttMessage * ptrAnswer = pvPortMalloc(sizeof(mqttMessage));
 		 struct json_out out1 = JSON_OUT_BUF(ptrAnswer->buffer, sizeof(ptrAnswer->buffer));
 
+		 // EXAMEN
+		 if( xActivatedMember == alarmQueue )
+	        {
+			 xQueueReceive(alarmQueue, &tempUmbralQueue,0);
+			 tempUmbral = tempUmbralQueue;
+	        }
+
+		 /////////////////////////
 		 if( xActivatedMember == adcQueueHandle )
 	        {
 			 	uint16_t adcValue;
@@ -313,10 +346,41 @@ static void mqtt_sensorSubscription(void *pvParameters){
 	            xQueueSend(mqttSendQueue, (void *) &(ptrAnswer), portMAX_DELAY);
 
 	        }else if (xActivatedMember == ds1621Queuehandle) {
+	        	// La logica de la alarma está mal, pero ya no peta.
 	        	float grados;
 	        	xQueueReceive( xActivatedMember, &grados, 0 );
+	        	if(tempUmbral == 200){
+	        		alarmaActiva = false;
+	        	}else if((grados > tempUmbral) && !alarmaActiva){
+	        		bool booleano = true;
+	        		struct json_out out2 = JSON_OUT_BUF(buffAlarma, sizeof(buffAlarma));
+	        		json_printf(&out2,"{ tempAlarm : %B}", booleano, grados);
+	        		int msg_id = esp_mqtt_client_publish(client, MQTT_TOPIC_PUBLISH_BASE, buffAlarma, 0, 0, 0);
+	        		//xQueueSend(mqttSendQueue, (void *) buffAlarma, portMAX_DELAY);
+	        		tiempoPasado = xTaskGetTickCount();
+	        		alarmaActiva = true;
+	        		ESP_LOGI(TAG, "Alarm true");
+	        	}
+	        	tiempoActual = xTaskGetTickCount();
+
+	        	// Tiempo desde el ultimo valor en activar la alarma
+	        	if(((tiempoActual-tiempoPasado) * portTICK_RATE_MS >= 5000) && alarmaActiva){
+	        		ESP_LOGI(TAG, "Entrada if");
+	        		struct json_out out3 = JSON_OUT_BUF(buffAlarma, sizeof(buffAlarma));
+	        		json_printf(&out3,"{ tempAlarm : %B}", false, grados);
+	        		int msg_id = esp_mqtt_client_publish(client, MQTT_TOPIC_PUBLISH_BASE, buffAlarma, 0, 0, 0);
+	        		//xQueueSend(mqttSendQueue, (void *) &(buffAlarma), portMAX_DELAY);
+	        		tiempoPasado = xTaskGetTickCount();
+	        		alarmaActiva = false;
+	        		ESP_LOGI(TAG, "Alarm false");
+	        	}
+
+	        	ESP_LOGI(TAG, " Enviar temp");
+
+	        	struct json_out out1 = JSON_OUT_BUF(ptrAnswer->buffer, sizeof(ptrAnswer->buffer));
 	        	json_printf(&out1,"{ temp : %f }", grados);
 	        	xQueueSend(mqttSendQueue, (void *) &(ptrAnswer), portMAX_DELAY);
+
 	        }
 	        else
 	        {
